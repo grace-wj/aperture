@@ -32,3 +32,7 @@ A visual debugger for AI agent traces. Tree + timeline + span detail, local-firs
 ## Before suggesting a refactor
 
 Ask: does the user's request actually require this, or am I cleaning up adjacent code? If adjacent, mention it as a follow-up, don't do it.
+
+## Keep `DECISIONS.md` updated
+
+When a material design choice is made (stack pick, scope cut, format decision, rejected alternative worth remembering), append an entry to `DECISIONS.md`. Routine "did X file edit" work does NOT belong there — only decisions with a *why* that wouldn't be recoverable from git diff. Always include the rejected alternatives.
