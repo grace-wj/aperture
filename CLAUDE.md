@@ -1,6 +1,6 @@
 # Aperture — working rules
 
-A visual debugger for AI agent traces. Tree + timeline + span detail, local-first, no backend for MVP. See `../aperture.md` for the full plan.
+A visual debugger for AI agent traces. Tree + timeline + span detail, local-first, no backend for MVP.
 
 ## Anti-bloat rules (these override defaults)
 
@@ -19,6 +19,7 @@ A visual debugger for AI agent traces. Tree + timeline + span detail, local-firs
 - Functional React. No class components.
 - Zustand for app state, useState for local-only state. No Redux, no Context for state.
 - Zod schemas live next to the type they validate, not in a separate `schemas/` tree.
+- Zod naming: schema is `FooSchema`, inferred type is `Foo` (e.g. `TraceSchema` / `Trace`). Grep-friendly; never reuse one name for both.
 - File names: kebab-case. Component names: PascalCase. Hook names: `useFoo`.
 
 ## Definitely out of scope (do not propose)
@@ -32,7 +33,3 @@ A visual debugger for AI agent traces. Tree + timeline + span detail, local-firs
 ## Before suggesting a refactor
 
 Ask: does the user's request actually require this, or am I cleaning up adjacent code? If adjacent, mention it as a follow-up, don't do it.
-
-## Keep `DECISIONS.md` updated
-
-When a material design choice is made (stack pick, scope cut, format decision, rejected alternative worth remembering), append an entry to `DECISIONS.md`. Routine "did X file edit" work does NOT belong there — only decisions with a *why* that wouldn't be recoverable from git diff. Always include the rejected alternatives.

@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Planning / design docs — kept local, not in repo
+aperture.md
+DECISIONS.md
