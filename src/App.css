@@ -86,11 +86,11 @@
   padding: 12px;
   border-radius: 6px;
   overflow: auto;
+  max-height: 70vh;
 }
 
 .panel--error pre {
   color: #b91c1c;
-  max-height: 70vh;
 }
 
 .summary {
@@ -98,73 +98,4 @@
   font-size: 13px;
   color: var(--text);
   margin: 0 0 12px;
-}
-
-.tree {
-  max-height: 60vh;
-}
-
-.tree-row {
-  display: grid;
-  grid-template-columns: max-content 4ch 5ch 8ch 1fr;
-  gap: 12px;
-  white-space: pre;
-}
-
-.tree-indent {
-  white-space: pre;
-}
-
-.tree-kind {
-  color: var(--text);
-}
-
-.tree-kind--llm {
-  color: #7c3aed;
-}
-
-.tree-kind--tool {
-  color: #2563eb;
-}
-
-.tree-kind--agent {
-  color: #db2777;
-}
-
-.tree-status--ok {
-  color: #16a34a;
-}
-
-.tree-status--error {
-  color: #dc2626;
-  font-weight: 600;
-}
-
-.tree-status--in_progress {
-  color: #d97706;
-}
-
-.tree-duration {
-  color: var(--text);
-  text-align: right;
-}
-
-.tree-name {
-  color: var(--text-h);
-}
-
-.raw {
-  margin-top: 16px;
-}
-
-.raw summary {
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text);
-  padding: 4px 0;
-}
-
-.raw pre {
-  margin-top: 8px;
-  max-height: 60vh;
 }

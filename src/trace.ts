@@ -51,27 +51,39 @@ type ContentBlock = {
   tool_use_id?: string
   content?: unknown
   is_error?: boolean
-  text?: string
-  thinking?: string
 }
 
 function claudeAgentSdkToTrace(events: SdkEvent[]): Trace {
   const init = events.find((e) => e.type === 'system' && e.subtype === 'init')
   const result = events.find((e) => e.type === 'result')
+  const diagnostics: string[] = []
 
-  const timestamps = events
-    .map((e) => (typeof e.timestamp === 'string' ? Date.parse(e.timestamp) : NaN))
-    .filter((t) => Number.isFinite(t))
+  let tsMin = Infinity
+  let tsMax = -Infinity
+  for (const e of events) {
+    if (typeof e.timestamp !== 'string') continue
+    const t = Date.parse(e.timestamp)
+    if (!Number.isFinite(t)) continue
+    if (t < tsMin) tsMin = t
+    if (t > tsMax) tsMax = t
+  }
+  const hasTimestamps = tsMin !== Infinity
 
-  const traceEnd = timestamps.length
-    ? Math.max(...timestamps)
-    : Date.now()
   const durationMs = typeof result?.duration_ms === 'number' ? result.duration_ms : 0
-  const traceStart = durationMs
-    ? traceEnd - durationMs
-    : timestamps.length
-      ? Math.min(...timestamps)
-      : traceEnd
+  let traceEnd: number
+  let traceStart: number
+  if (hasTimestamps) {
+    traceEnd = tsMax
+    traceStart = durationMs ? traceEnd - durationMs : tsMin
+  } else if (durationMs) {
+    traceStart = 0
+    traceEnd = durationMs
+    diagnostics.push('No event timestamps; trace anchored at epoch 0 using result.duration_ms.')
+  } else {
+    traceStart = 0
+    traceEnd = 0
+    diagnostics.push('No event timestamps and no result.duration_ms; all spans collapsed to t=0.')
+  }
 
   const sessionId =
     (typeof init?.session_id === 'string' && init.session_id) ||
@@ -116,17 +128,13 @@ function claudeAgentSdkToTrace(events: SdkEvent[]): Trace {
 
     if (ev.type === 'assistant') {
       const msg = ev.message as
-        | {
-            id?: string
-            model?: string
-            content?: ContentBlock[]
-            usage?: unknown
-            stop_reason?: unknown
-            diagnostics?: unknown
-          }
+        | { id?: string; model?: string; content?: ContentBlock[]; usage?: unknown; stop_reason?: unknown }
         | undefined
       const messageId = msg?.id
-      if (!messageId) continue
+      if (!messageId) {
+        diagnostics.push('assistant event without message.id; dropped.')
+        continue
+      }
       let llmSpan = llmByMessageId.get(messageId)
       if (!llmSpan) {
         llmSpan = {
@@ -145,12 +153,18 @@ function claudeAgentSdkToTrace(events: SdkEvent[]): Trace {
       const content = llmSpan.attributes.content as ContentBlock[]
       for (const block of msg?.content ?? []) {
         content.push(block)
-        if (block.type === 'tool_use' && typeof block.id === 'string') {
-          const isSubagent = block.name === 'Agent' || block.name === 'Task'
+        if (block.type === 'tool_use') {
+          if (typeof block.id !== 'string') {
+            diagnostics.push(`tool_use without string id in message ${messageId}; span dropped.`)
+            continue
+          }
+          if (toolByUseId.has(block.id)) {
+            diagnostics.push(`duplicate tool_use.id ${block.id}; later occurrence replaces earlier.`)
+          }
           const toolSpan: Span = {
             id: block.id,
             parentId: llmSpan.id,
-            kind: isSubagent ? 'agent' : 'tool',
+            kind: block.name === 'Agent' ? 'agent' : 'tool',
             name: block.name ?? 'tool',
             status: 'in_progress',
             startMs: cursor,
@@ -161,48 +175,57 @@ function claudeAgentSdkToTrace(events: SdkEvent[]): Trace {
           spans.push(toolSpan)
         }
       }
-      if (msg?.usage !== undefined) llmSpan.attributes.usage = msg.usage
-      if (msg?.stop_reason !== undefined && msg.stop_reason !== null)
-        llmSpan.attributes.stopReason = msg.stop_reason
-      if (msg?.diagnostics !== undefined && msg.diagnostics !== null)
-        llmSpan.attributes.diagnostics = msg.diagnostics
+      if (msg?.usage != null) llmSpan.attributes.usage = msg.usage
+      if (msg?.stop_reason != null) llmSpan.attributes.stopReason = msg.stop_reason
       llmSpan.endMs = cursor
     } else if (ev.type === 'user') {
       const blocks = (ev.message as { content?: ContentBlock[] } | undefined)?.content ?? []
       for (const block of blocks) {
-        if (block.type === 'tool_result' && typeof block.tool_use_id === 'string') {
-          const toolSpan = toolByUseId.get(block.tool_use_id)
-          if (!toolSpan) continue
-          toolSpan.endMs = cursor
-          toolSpan.status = block.is_error ? 'error' : 'ok'
-          toolSpan.attributes.result = block.content
-          const tur = ev.tool_use_result
-          if (tur !== undefined) toolSpan.attributes.toolUseResult = tur
-          const dur =
-            tur && typeof tur === 'object' && 'durationMs' in tur
-              ? (tur as { durationMs?: unknown }).durationMs
-              : undefined
-          if (typeof dur === 'number') {
-            toolSpan.startMs = Math.max(traceStart, toolSpan.endMs - dur)
-          }
+        if (block.type !== 'tool_result') continue
+        if (typeof block.tool_use_id !== 'string') {
+          diagnostics.push('tool_result without string tool_use_id; dropped.')
+          continue
+        }
+        const toolSpan = toolByUseId.get(block.tool_use_id)
+        if (!toolSpan) {
+          diagnostics.push(`orphan tool_result for tool_use_id ${block.tool_use_id}; no matching tool_use.`)
+          continue
+        }
+        toolSpan.endMs = cursor
+        toolSpan.status = block.is_error ? 'error' : 'ok'
+        toolSpan.attributes.result = block.content
+        const tur = ev.tool_use_result
+        if (tur !== undefined) toolSpan.attributes.toolUseResult = tur
+        const dur =
+          tur && typeof tur === 'object' && 'durationMs' in tur
+            ? (tur as { durationMs?: unknown }).durationMs
+            : undefined
+        if (typeof dur === 'number') {
+          toolSpan.startMs = Math.max(traceStart, toolSpan.endMs - dur)
         }
       }
     } else if (ev.type === 'system' && ev.subtype === 'task_notification') {
       const tuId = typeof ev.tool_use_id === 'string' ? ev.tool_use_id : null
       const toolSpan = tuId ? toolByUseId.get(tuId) : undefined
-      if (toolSpan) {
-        if (ev.status === 'completed') toolSpan.status = 'ok'
-        else if (ev.status === 'error') toolSpan.status = 'error'
-        if (ev.usage !== undefined) toolSpan.attributes.subagentUsage = ev.usage
-        toolSpan.endMs = cursor
+      if (!toolSpan) {
+        if (tuId) diagnostics.push(`task_notification for tool_use_id ${tuId}; no matching span.`)
+        continue
       }
+      if (ev.status === 'completed') toolSpan.status = 'ok'
+      else if (ev.status === 'error') toolSpan.status = 'error'
+      if (ev.usage !== undefined) toolSpan.attributes.subagentUsage = ev.usage
+      toolSpan.endMs = cursor
     }
   }
 
   for (const span of spans) {
-    if (span.status === 'in_progress') span.status = 'error'
-    if (span.endMs < span.startMs) span.endMs = span.startMs
+    if (span.endMs < span.startMs) {
+      diagnostics.push(`span ${span.id} (${span.name}) endMs < startMs; clamped.`)
+      span.endMs = span.startMs
+    }
   }
+
+  if (diagnostics.length) rootSpan.attributes.diagnostics = diagnostics
 
   return TraceSchema.parse({
     id: sessionId,
