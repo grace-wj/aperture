@@ -43,11 +43,13 @@ function looksLikeClaudeAgentSdk(raw: unknown): raw is SdkEvent[] {
   return first?.type === 'system' && first?.subtype === 'init'
 }
 
-type ContentBlock = {
+export type ContentBlock = {
   type: string
   id?: string
   name?: string
   input?: unknown
+  text?: string
+  thinking?: string
   tool_use_id?: string
   content?: unknown
   is_error?: boolean
