@@ -9,5 +9,3 @@ For example: an agent tells a customer their order is canceled when it isn't. Th
 Built for traces from the [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript). The internal schema is documented so traces from other harnesses can be ingested via a short adapter.
 
 **Stack:** Vite + React 19 + TypeScript, Zustand, Zod. Three.js and GSAP for the timeline canvas. No backend — drop a trace JSON file on the page and it works.
-
-Status: work in progress. See [DECISIONS.md](./DECISIONS.md) for design rationale.
