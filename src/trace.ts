@@ -27,6 +27,12 @@ export const TraceSchema = z.object({
 })
 export type Trace = z.infer<typeof TraceSchema>
 
+export function fmtMs(ms: number): string {
+  if (ms < 1) return '0ms'
+  if (ms < 1000) return `${Math.round(ms)}ms`
+  return `${(ms / 1000).toFixed(2)}s`
+}
+
 export function parseTraceJson(text: string): Trace {
   const raw: unknown = JSON.parse(text)
   if (looksLikeClaudeAgentSdk(raw)) {

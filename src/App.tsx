@@ -1,5 +1,7 @@
 import { Fragment, useMemo, useState } from 'react'
-import { parseTraceJson, type ContentBlock, type Span, type Trace } from './trace'
+import { useAppStore } from './store'
+import { Timeline } from './timeline'
+import { fmtMs, parseTraceJson, type ContentBlock, type Span, type Trace } from './trace'
 import './App.css'
 
 type LoadState =
@@ -11,7 +13,7 @@ function App() {
   const [state, setState] = useState<LoadState>({ kind: 'empty' })
   const [dragging, setDragging] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const select = useAppStore((s) => s.select)
 
   async function handleFile(file: File) {
     const text = await file.text()
@@ -19,7 +21,7 @@ function App() {
       const trace = parseTraceJson(text)
       const root = trace.spans.find((s) => s.parentId === null)
       setExpanded(new Set(root ? [root.id] : []))
-      setSelectedId(root?.id ?? null)
+      select(root?.id ?? null)
       setState({ kind: 'loaded', trace, filename: file.name })
     } catch (err) {
       setState({
@@ -95,9 +97,7 @@ function App() {
           trace={state.trace}
           filename={state.filename}
           expanded={expanded}
-          selectedId={selectedId}
           onToggle={toggle}
-          onSelect={setSelectedId}
         />
       )}
     </main>
@@ -108,17 +108,14 @@ function LoadedView({
   trace,
   filename,
   expanded,
-  selectedId,
   onToggle,
-  onSelect,
 }: {
   trace: Trace
   filename: string
   expanded: Set<string>
-  selectedId: string | null
   onToggle: (id: string) => void
-  onSelect: (id: string) => void
 }) {
+  const selectedId = useAppStore((s) => s.selectedId)
   const childMap = useMemo(() => buildChildren(trace.spans), [trace.spans])
   const roots = childMap.get(null) ?? []
   const diagnostics = trace.spans[0]?.attributes.diagnostics
@@ -143,6 +140,7 @@ function LoadedView({
           </ul>
         </div>
       )}
+      <Timeline trace={trace} />
       <div className="split">
         <div className="tree" role="tree">
           {roots.map((span) => (
@@ -152,9 +150,7 @@ function LoadedView({
               depth={0}
               childMap={childMap}
               expanded={expanded}
-              selectedId={selectedId}
               onToggle={onToggle}
-              onSelect={onSelect}
             />
           ))}
         </div>
@@ -171,29 +167,26 @@ function Row({
   depth,
   childMap,
   expanded,
-  selectedId,
   onToggle,
-  onSelect,
 }: {
   span: Span
   depth: number
   childMap: Map<string | null, Span[]>
   expanded: Set<string>
-  selectedId: string | null
   onToggle: (id: string) => void
-  onSelect: (id: string) => void
 }) {
+  const isSelected = useAppStore((s) => s.selectedId === span.id)
+  const select = useAppStore((s) => s.select)
   const kids = childMap.get(span.id) ?? []
   const hasKids = kids.length > 0
   const isExpanded = expanded.has(span.id)
-  const isSelected = selectedId === span.id
   const duration = span.endMs - span.startMs
   return (
     <>
       <div
         className={`row${isSelected ? ' row--selected' : ''}`}
         style={{ paddingLeft: 8 + depth * 16 }}
-        onClick={() => onSelect(span.id)}
+        onClick={() => select(span.id)}
         role="treeitem"
         aria-expanded={hasKids ? isExpanded : undefined}
         aria-selected={isSelected}
@@ -225,9 +218,7 @@ function Row({
             depth={depth + 1}
             childMap={childMap}
             expanded={expanded}
-            selectedId={selectedId}
             onToggle={onToggle}
-            onSelect={onSelect}
           />
         ))}
     </>
@@ -376,12 +367,6 @@ function buildChildren(spans: Span[]): Map<string | null, Span[]> {
     else m.set(s.parentId, [s])
   }
   return m
-}
-
-function fmtMs(ms: number) {
-  if (ms < 1) return '0ms'
-  if (ms < 1000) return `${Math.round(ms)}ms`
-  return `${(ms / 1000).toFixed(2)}s`
 }
 
 function prettyJson(v: unknown) {

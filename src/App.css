@@ -128,6 +128,69 @@
   font-size: 12px;
 }
 
+.timeline {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 4px 4px;
+  margin-bottom: 16px;
+}
+
+.timeline__svg {
+  display: block;
+  font-family: var(--mono);
+}
+
+.timeline__gridline {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.timeline__ticklabel {
+  font-size: 10px;
+  fill: var(--text);
+  letter-spacing: 0.3px;
+}
+
+.timeline__bar {
+  cursor: pointer;
+  stroke: transparent;
+  stroke-width: 1;
+  transition: filter 0.1s;
+}
+
+.timeline__bar:hover {
+  filter: brightness(1.18);
+}
+
+.timeline__bar--llm {
+  fill: rgba(59, 130, 246, 0.55);
+}
+
+.timeline__bar--tool {
+  fill: rgba(245, 158, 11, 0.55);
+}
+
+.timeline__bar--agent {
+  fill: rgba(16, 185, 129, 0.55);
+}
+
+.timeline__bar--error {
+  stroke: #ef4444;
+  stroke-width: 1.5;
+}
+
+.timeline__bar--in_progress {
+  stroke: #f59e0b;
+  stroke-width: 1.5;
+}
+
+.timeline__bar--selected {
+  stroke: var(--accent);
+  stroke-width: 2;
+  filter: brightness(1.18);
+}
+
 .split {
   display: grid;
   grid-template-columns: minmax(360px, 40%) 1fr;
