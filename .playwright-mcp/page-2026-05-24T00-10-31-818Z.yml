@@ -1,5 +1,0 @@
-- main [ref=e3]:
-  - heading "Aperture" [level=1] [ref=e5]
-  - generic [ref=e6]:
-    - paragraph [ref=e7]: Drop a trace JSON file here
-    - generic [ref=e8] [cursor=pointer]: or pick a file

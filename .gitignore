@@ -26,3 +26,6 @@ dist-ssr
 # Planning / design docs — kept local, not in repo
 aperture.md
 DECISIONS.md
+
+# Playwright MCP per-action debug artifacts (snapshots, console captures)
+.playwright-mcp/
