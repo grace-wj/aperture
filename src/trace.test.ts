@@ -2,10 +2,15 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { parseTraceJson } from './trace'
 
-const canonicalText = readFileSync('samples/canonical.json', 'utf-8')
+const FIXTURES = [
+  'samples/canonical.json',
+  'samples/real-parallel-error.json',
+  'samples/real-nested-subagents.json',
+  'samples/real-long-run.json',
+]
 
-describe('parseTraceJson — canonical Claude Agent SDK fixture', () => {
-  const trace = parseTraceJson(canonicalText)
+describe.each(FIXTURES)('parseTraceJson — %s', (file) => {
+  const trace = parseTraceJson(readFileSync(file, 'utf-8'))
 
   test('produces a single agent root with parentId null', () => {
     const roots = trace.spans.filter((s) => s.parentId === null)

@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "dead": "knip",
     "gen:fixture": "tsx scripts/generate-fixture.ts",
+    "gen:real": "tsx scripts/generate-real.ts",
     "preview": "vite preview",
     "test": "vitest"
   },
