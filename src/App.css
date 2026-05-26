@@ -258,6 +258,15 @@
   filter: brightness(1.18);
 }
 
+.timeline__bar--match {
+  filter: brightness(1.2) saturate(1.2);
+}
+
+.timeline__bar--dim {
+  opacity: 0.25;
+  filter: saturate(0.2);
+}
+
 .split {
   display: grid;
   grid-template-columns: minmax(360px, 40%) 1fr;

@@ -225,7 +225,7 @@ function LoadedView({
           </ul>
         </div>
       )}
-      <Timeline trace={trace} />
+      <Timeline trace={trace} matchedIds={matchedIds} matchAncestors={matchAncestors} />
       <div className="split">
         <div className="tree" role="tree">
           {roots.map((span) => (

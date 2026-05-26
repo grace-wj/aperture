@@ -9,7 +9,15 @@ const AXIS_HEIGHT = 22
 const PAD_X = 12
 const PAD_BOTTOM = 6
 
-export function Timeline({ trace }: { trace: Trace }) {
+export function Timeline({
+  trace,
+  matchedIds,
+  matchAncestors,
+}: {
+  trace: Trace
+  matchedIds: Set<string> | null
+  matchAncestors: Set<string>
+}) {
   const selectedId = useAppStore((s) => s.selectedId)
   const select = useAppStore((s) => s.select)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -74,11 +82,21 @@ export function Timeline({ trace }: { trace: Trace }) {
             const x = PAD_X + xScale(span.startMs)
             const y = AXIS_HEIGHT + lane * (LANE_HEIGHT + LANE_GAP)
             const isSelected = selectedId === span.id
+            const matchState =
+              matchedIds === null
+                ? null
+                : matchedIds.has(span.id)
+                  ? 'match'
+                  : matchAncestors.has(span.id)
+                    ? 'ancestor'
+                    : 'dim'
             const cls = [
               'timeline__bar',
               `timeline__bar--${span.kind}`,
               `timeline__bar--${span.status}`,
               isSelected ? 'timeline__bar--selected' : '',
+              matchState === 'match' ? 'timeline__bar--match' : '',
+              matchState === 'dim' ? 'timeline__bar--dim' : '',
             ]
               .filter(Boolean)
               .join(' ')
