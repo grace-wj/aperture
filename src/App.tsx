@@ -7,6 +7,7 @@ import {
   matchSpan,
   type Filter,
 } from './filter'
+import { replayOrder } from './replay'
 import { useAppStore } from './store'
 import { Timeline } from './timeline'
 import {
@@ -20,6 +21,7 @@ import {
 import './App.css'
 
 const FILTER_KINDS: SpanKind[] = ['llm', 'tool', 'agent']
+const REPLAY_BEAT_MS = 700
 
 type LoadState =
   | { kind: 'empty' }
@@ -31,6 +33,7 @@ function App() {
   const [dragging, setDragging] = useState(false)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const select = useAppStore((s) => s.select)
+  const setPlaying = useAppStore((s) => s.setPlaying)
 
   async function handleFile(file: File) {
     const text = await file.text()
@@ -38,6 +41,7 @@ function App() {
       const trace = parseTraceJson(text)
       const root = trace.spans.find((s) => s.parentId === null)
       setExpanded(new Set(root ? [root.id] : []))
+      setPlaying(false)
       select(root?.id ?? null)
       setState({ kind: 'loaded', trace, filename: file.name })
     } catch (err) {
@@ -133,6 +137,7 @@ function LoadedView({
   onToggle: (id: string) => void
 }) {
   const selectedId = useAppStore((s) => s.selectedId)
+  const select = useAppStore((s) => s.select)
   const childMap = useMemo(() => buildChildren(trace.spans), [trace.spans])
   const roots = childMap.get(null) ?? []
   const diagnostics = trace.spans[0]?.attributes.diagnostics
@@ -175,6 +180,33 @@ function LoadedView({
     if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [selectedId])
 
+  const playing = useAppStore((s) => s.playing)
+  const setPlaying = useAppStore((s) => s.setPlaying)
+  const order = useMemo(() => replayOrder(trace.spans), [trace.spans])
+  const lastStep = order.length - 1
+  // Derive position from selection (one source of truth) so clicking a span and pressing
+  // Play resumes from there, not from wherever the tick last stopped.
+  const replayIndex = selectedId ? order.indexOf(selectedId) : -1
+  const displayIndex = Math.min(Math.max(replayIndex, 0), lastStep)
+
+  useEffect(() => {
+    if (!playing || replayIndex < 0 || replayIndex >= lastStep) return
+    const t = setTimeout(() => {
+      select(order[replayIndex + 1])
+      if (replayIndex + 1 >= lastStep) setPlaying(false)
+    }, REPLAY_BEAT_MS)
+    return () => clearTimeout(t)
+  }, [playing, replayIndex, lastStep, order, select, setPlaying])
+
+  function onPlayPause() {
+    if (playing) {
+      setPlaying(false)
+      return
+    }
+    if (replayIndex < 0 || replayIndex >= lastStep) select(order[0])
+    setPlaying(true)
+  }
+
   function toggleKind(k: SpanKind) {
     setFilter((f) => {
       const kinds = new Set(f.kinds)
@@ -184,8 +216,10 @@ function LoadedView({
     })
   }
 
+  const replayPct = lastStep > 0 ? (displayIndex / lastStep) * 100 : 100
+
   return (
-    <section className="loaded">
+    <section className={`loaded${playing ? ' loaded--replaying' : ''}`}>
       <div className="loaded__head">
         <h2>{trace.name ?? trace.id}</h2>
         <span className="loaded__meta">
@@ -233,6 +267,33 @@ function LoadedView({
           </ul>
         </div>
       )}
+      <div className="replaybar">
+        <button
+          type="button"
+          className="replaybar__btn"
+          onClick={onPlayPause}
+          aria-label={playing ? 'pause replay' : 'play replay'}
+        >
+          {playing ? '⏸' : '▶'}
+        </button>
+        <button
+          type="button"
+          className="replaybar__btn"
+          onClick={() => {
+            select(order[0])
+            setPlaying(true)
+          }}
+          aria-label="restart replay"
+        >
+          ⏮
+        </button>
+        <div className="replaybar__track">
+          <div className="replaybar__fill" style={{ width: `${replayPct}%` }} />
+        </div>
+        <span className="replaybar__count">
+          {displayIndex + 1} / {order.length}
+        </span>
+      </div>
       <Timeline trace={trace} matchedIds={matchedIds} matchAncestors={matchAncestors} />
       <div className="split">
         <div className="tree" role="tree">
@@ -275,7 +336,7 @@ function Row({
   matchAncestors: Set<string>
 }) {
   const isSelected = useAppStore((s) => s.selectedId === span.id)
-  const select = useAppStore((s) => s.select)
+  const selectByUser = useAppStore((s) => s.selectByUser)
   const kids = childMap.get(span.id) ?? []
   const hasKids = kids.length > 0
   const isExpanded = expanded.has(span.id)
@@ -301,7 +362,7 @@ function Row({
       <div
         className={rowClasses}
         style={{ paddingLeft: 8 + depth * 16 }}
-        onClick={() => select(span.id)}
+        onClick={() => selectByUser(span.id)}
         role="treeitem"
         aria-expanded={hasKids ? isExpanded : undefined}
         aria-selected={isSelected}

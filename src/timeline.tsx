@@ -19,7 +19,7 @@ export function Timeline({
   matchAncestors: Set<string>
 }) {
   const selectedId = useAppStore((s) => s.selectedId)
-  const select = useAppStore((s) => s.select)
+  const selectByUser = useAppStore((s) => s.selectByUser)
   const containerRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
 
@@ -109,7 +109,7 @@ export function Timeline({
                 height={LANE_HEIGHT}
                 rx={2}
                 className={cls}
-                onClick={() => select(span.id)}
+                onClick={() => selectByUser(span.id)}
               >
                 <title>{`${span.kind} · ${span.name} · ${fmtMs(span.endMs - span.startMs)}`}</title>
               </rect>
