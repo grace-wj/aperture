@@ -292,7 +292,7 @@ function Row({
     'row',
     isSelected ? 'row--selected' : '',
     matchState === 'match' ? 'row--match' : '',
-    matchState === 'dim' ? 'row--dim' : '',
+    matchState === 'dim' && !isSelected ? 'row--dim' : '',
   ]
     .filter(Boolean)
     .join(' ')

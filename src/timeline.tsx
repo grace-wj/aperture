@@ -96,7 +96,7 @@ export function Timeline({
               `timeline__bar--${span.status}`,
               isSelected ? 'timeline__bar--selected' : '',
               matchState === 'match' ? 'timeline__bar--match' : '',
-              matchState === 'dim' ? 'timeline__bar--dim' : '',
+              matchState === 'dim' && !isSelected ? 'timeline__bar--dim' : '',
             ]
               .filter(Boolean)
               .join(' ')
