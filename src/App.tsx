@@ -1,8 +1,24 @@
 import { Fragment, useMemo, useState } from 'react'
+import {
+  EMPTY_FILTER,
+  buildHaystack,
+  isFilterActive,
+  matchSpan,
+  type Filter,
+} from './filter'
 import { useAppStore } from './store'
 import { Timeline } from './timeline'
-import { fmtMs, parseTraceJson, type ContentBlock, type Span, type Trace } from './trace'
+import {
+  fmtMs,
+  parseTraceJson,
+  type ContentBlock,
+  type Span,
+  type SpanKind,
+  type Trace,
+} from './trace'
 import './App.css'
+
+const FILTER_KINDS: SpanKind[] = ['llm', 'tool', 'agent']
 
 type LoadState =
   | { kind: 'empty' }
@@ -122,6 +138,28 @@ function LoadedView({
   const diagnosticList = Array.isArray(diagnostics) ? (diagnostics as string[]) : []
   const selected = selectedId ? trace.spans.find((s) => s.id === selectedId) ?? null : null
 
+  const [filter, setFilter] = useState<Filter>(EMPTY_FILTER)
+  const haystack = useMemo(() => buildHaystack(trace.spans), [trace.spans])
+  const filterActive = isFilterActive(filter)
+  const matchedIds = useMemo(() => {
+    if (!filterActive) return null
+    const queryLower = filter.query.trim().toLowerCase()
+    const ids = new Set<string>()
+    for (const s of trace.spans) {
+      if (matchSpan(s, queryLower, filter, haystack)) ids.add(s.id)
+    }
+    return ids
+  }, [trace.spans, filter, filterActive, haystack])
+
+  function toggleKind(k: SpanKind) {
+    setFilter((f) => {
+      const kinds = new Set(f.kinds)
+      if (kinds.has(k)) kinds.delete(k)
+      else kinds.add(k)
+      return { ...f, kinds }
+    })
+  }
+
   return (
     <section className="loaded">
       <div className="loaded__head">
@@ -129,6 +167,37 @@ function LoadedView({
         <span className="loaded__meta">
           {filename} · {trace.spans.length} spans · {fmtMs(trace.endMs - trace.startMs)}
         </span>
+      </div>
+      <div className="filterbar">
+        <input
+          type="search"
+          className="filterbar__search"
+          placeholder="Search spans…"
+          value={filter.query}
+          onChange={(e) => setFilter((f) => ({ ...f, query: e.target.value }))}
+        />
+        {FILTER_KINDS.map((k) => (
+          <button
+            key={k}
+            type="button"
+            className={`chip${filter.kinds.has(k) ? ' chip--on' : ''}`}
+            onClick={() => toggleKind(k)}
+          >
+            {k}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={`chip${filter.errorsOnly ? ' chip--on chip--err' : ''}`}
+          onClick={() => setFilter((f) => ({ ...f, errorsOnly: !f.errorsOnly }))}
+        >
+          errors only
+        </button>
+        {matchedIds && (
+          <span className="filterbar__count">
+            {matchedIds.size} of {trace.spans.length}
+          </span>
+        )}
       </div>
       {diagnosticList.length > 0 && (
         <div className="diagnostics" role="status">
