@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, useEffect, useMemo, useState } from 'react'
 import {
   EMPTY_FILTER,
   buildHaystack,
@@ -167,6 +167,14 @@ function LoadedView({
     [expanded, matchAncestors, selectionAncestors],
   )
 
+  useEffect(() => {
+    if (!selectedId) return
+    const el = document.querySelector<HTMLDivElement>(
+      `.tree [data-row-id="${CSS.escape(selectedId)}"]`,
+    )
+    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [selectedId])
+
   function toggleKind(k: SpanKind) {
     setFilter((f) => {
       const kinds = new Set(f.kinds)
@@ -297,6 +305,7 @@ function Row({
         role="treeitem"
         aria-expanded={hasKids ? isExpanded : undefined}
         aria-selected={isSelected}
+        data-row-id={span.id}
       >
         <button
           type="button"
