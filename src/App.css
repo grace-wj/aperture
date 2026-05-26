@@ -295,6 +295,18 @@
   border-left-color: var(--accent);
 }
 
+.row--match {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.row--match:hover {
+  background: rgba(245, 158, 11, 0.14);
+}
+
+.row--dim {
+  opacity: 0.35;
+}
+
 .row__caret {
   font: inherit;
   background: transparent;

@@ -2,6 +2,7 @@ import { Fragment, useMemo, useState } from 'react'
 import {
   EMPTY_FILTER,
   buildHaystack,
+  expandToReveal,
   isFilterActive,
   matchSpan,
   type Filter,
@@ -151,6 +152,21 @@ function LoadedView({
     return ids
   }, [trace.spans, filter, filterActive, haystack])
 
+  const matchAncestors = useMemo(() => {
+    if (matchedIds === null) return new Set<string>()
+    return expandToReveal(matchedIds, trace.spans)
+  }, [matchedIds, trace.spans])
+
+  const selectionAncestors = useMemo(() => {
+    if (!selectedId) return new Set<string>()
+    return expandToReveal(new Set([selectedId]), trace.spans)
+  }, [selectedId, trace.spans])
+
+  const effectiveExpanded = useMemo(
+    () => new Set([...expanded, ...matchAncestors, ...selectionAncestors]),
+    [expanded, matchAncestors, selectionAncestors],
+  )
+
   function toggleKind(k: SpanKind) {
     setFilter((f) => {
       const kinds = new Set(f.kinds)
@@ -218,8 +234,10 @@ function LoadedView({
               span={span}
               depth={0}
               childMap={childMap}
-              expanded={expanded}
+              expanded={effectiveExpanded}
               onToggle={onToggle}
+              matchedIds={matchedIds}
+              matchAncestors={matchAncestors}
             />
           ))}
         </div>
@@ -237,12 +255,16 @@ function Row({
   childMap,
   expanded,
   onToggle,
+  matchedIds,
+  matchAncestors,
 }: {
   span: Span
   depth: number
   childMap: Map<string | null, Span[]>
   expanded: Set<string>
   onToggle: (id: string) => void
+  matchedIds: Set<string> | null
+  matchAncestors: Set<string>
 }) {
   const isSelected = useAppStore((s) => s.selectedId === span.id)
   const select = useAppStore((s) => s.select)
@@ -250,10 +272,26 @@ function Row({
   const hasKids = kids.length > 0
   const isExpanded = expanded.has(span.id)
   const duration = span.endMs - span.startMs
+  const matchState =
+    matchedIds === null
+      ? null
+      : matchedIds.has(span.id)
+        ? 'match'
+        : matchAncestors.has(span.id)
+          ? 'ancestor'
+          : 'dim'
+  const rowClasses = [
+    'row',
+    isSelected ? 'row--selected' : '',
+    matchState === 'match' ? 'row--match' : '',
+    matchState === 'dim' ? 'row--dim' : '',
+  ]
+    .filter(Boolean)
+    .join(' ')
   return (
     <>
       <div
-        className={`row${isSelected ? ' row--selected' : ''}`}
+        className={rowClasses}
         style={{ paddingLeft: 8 + depth * 16 }}
         onClick={() => select(span.id)}
         role="treeitem"
@@ -288,6 +326,8 @@ function Row({
             childMap={childMap}
             expanded={expanded}
             onToggle={onToggle}
+            matchedIds={matchedIds}
+            matchAncestors={matchAncestors}
           />
         ))}
     </>
