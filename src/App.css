@@ -218,9 +218,14 @@
   justify-content: center;
 }
 
-.replaybar__btn:hover {
+.replaybar__btn:hover:not(:disabled) {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+.replaybar__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .replaybar__track {

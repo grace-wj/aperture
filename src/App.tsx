@@ -138,6 +138,7 @@ function LoadedView({
 }) {
   const selectedId = useAppStore((s) => s.selectedId)
   const select = useAppStore((s) => s.select)
+  const selectByUser = useAppStore((s) => s.selectByUser)
   const childMap = useMemo(() => buildChildren(trace.spans), [trace.spans])
   const roots = childMap.get(null) ?? []
   const diagnostics = trace.spans[0]?.attributes.diagnostics
@@ -206,6 +207,9 @@ function LoadedView({
     if (replayIndex < 0 || replayIndex >= lastStep) select(order[0])
     setPlaying(true)
   }
+  function stepBy(delta: number) {
+    selectByUser(order[Math.min(Math.max(displayIndex + delta, 0), lastStep)])
+  }
 
   function toggleKind(k: SpanKind) {
     setFilter((f) => {
@@ -271,6 +275,26 @@ function LoadedView({
         <button
           type="button"
           className="replaybar__btn"
+          onClick={() => {
+            select(order[0])
+            setPlaying(true)
+          }}
+          aria-label="restart replay"
+        >
+          ⏮
+        </button>
+        <button
+          type="button"
+          className="replaybar__btn"
+          onClick={() => stepBy(-1)}
+          disabled={displayIndex <= 0}
+          aria-label="step back"
+        >
+          ◁
+        </button>
+        <button
+          type="button"
+          className="replaybar__btn"
           onClick={onPlayPause}
           aria-label={playing ? 'pause replay' : 'play replay'}
         >
@@ -279,13 +303,11 @@ function LoadedView({
         <button
           type="button"
           className="replaybar__btn"
-          onClick={() => {
-            select(order[0])
-            setPlaying(true)
-          }}
-          aria-label="restart replay"
+          onClick={() => stepBy(1)}
+          disabled={displayIndex >= lastStep}
+          aria-label="step forward"
         >
-          ⏮
+          ▷
         </button>
         <div className="replaybar__track">
           <div className="replaybar__fill" style={{ width: `${replayPct}%` }} />
