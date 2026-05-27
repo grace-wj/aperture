@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { computeLanes } from './lanes'
 import { useAppStore } from './store'
-import { fmtMs, type Span, type Trace } from './trace'
+import { fmtMs, type Trace } from './trace'
 
 const LANE_HEIGHT = 16
 const LANE_GAP = 4
@@ -118,25 +119,5 @@ export function Timeline({
       </svg>
     </div>
   )
-}
-
-function computeLanes(spans: Span[]): { laneOf: Map<string, number>; maxLane: number } {
-  const byId = new Map(spans.map((s) => [s.id, s]))
-  const laneOf = new Map<string, number>()
-  let maxLane = 0
-  function depthOf(span: Span): number {
-    const cached = laneOf.get(span.id)
-    if (cached !== undefined) return cached
-    let d = 0
-    if (span.parentId !== null) {
-      const parent = byId.get(span.parentId)
-      if (parent) d = depthOf(parent) + 1
-    }
-    laneOf.set(span.id, d)
-    if (d > maxLane) maxLane = d
-    return d
-  }
-  for (const s of spans) depthOf(s)
-  return { laneOf, maxLane }
 }
 
