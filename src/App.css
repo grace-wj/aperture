@@ -540,6 +540,59 @@
   color: var(--text-h);
 }
 
+.turndiff {
+  margin-bottom: 12px;
+}
+
+.turndiff__toggle {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.turndiff__body {
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.dline {
+  display: flex;
+  gap: 8px;
+  padding: 0 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dline__gutter {
+  color: var(--muted);
+  user-select: none;
+}
+
+.dline--add {
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.dline--add .dline__gutter {
+  color: var(--ok);
+}
+
+.dline--del {
+  background: color-mix(in srgb, var(--error) 14%, transparent);
+}
+
+.dline--del .dline__gutter {
+  color: var(--error);
+}
+
 .blocks {
   display: flex;
   flex-direction: column;

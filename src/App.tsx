@@ -9,6 +9,7 @@ import {
 } from './filter'
 import { replayOrder } from './replay'
 import { useAppStore } from './store'
+import { diffLines, previousTurn, serializeTurn } from './turn-diff'
 import { Timeline } from './timeline'
 import {
   fmtMs,
@@ -333,7 +334,11 @@ function LoadedView({
           ))}
         </div>
         <div className="detail">
-          {selected ? <SpanDetail span={selected} /> : <p className="detail__empty">Select a span.</p>}
+          {selected ? (
+            <SpanDetail span={selected} spans={trace.spans} />
+          ) : (
+            <p className="detail__empty">Select a span.</p>
+          )}
         </div>
       </div>
     </section>
@@ -426,9 +431,16 @@ function Row({
   )
 }
 
-function SpanDetail({ span }: { span: Span }) {
+function SpanDetail({ span, spans }: { span: Span; spans: Span[] }) {
   const isSessionRoot = span.kind === 'agent' && span.parentId === null
   const a = span.attributes as Record<string, unknown>
+  const [showDiff, setShowDiff] = useState(false)
+  const diff = useMemo(() => {
+    if (span.kind !== 'llm') return null
+    const prev = previousTurn(span, spans)
+    if (!prev) return null
+    return diffLines(serializeTurn(prev), serializeTurn(span))
+  }, [span, spans])
 
   const usage =
     span.kind === 'llm' && a.usage && typeof a.usage === 'object'
@@ -477,6 +489,30 @@ function SpanDetail({ span }: { span: Span }) {
                     <span className="usage__value">{value.toLocaleString()}</span>
                   </span>
                 ) : null,
+              )}
+            </div>
+          )}
+          {diff && (
+            <div className="turndiff">
+              <button
+                type="button"
+                className="turndiff__toggle"
+                onClick={() => setShowDiff((v) => !v)}
+                aria-expanded={showDiff}
+              >
+                {showDiff ? '▾' : '▸'} diff vs previous turn
+              </button>
+              {showDiff && (
+                <div className="turndiff__body">
+                  {diff.map((l, i) => (
+                    <div key={i} className={`dline dline--${l.op}`}>
+                      <span className="dline__gutter">
+                        {l.op === 'add' ? '+' : l.op === 'del' ? '−' : ' '}
+                      </span>
+                      <span className="dline__text">{l.text || ' '}</span>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           )}
